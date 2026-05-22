@@ -1,0 +1,891 @@
+
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ArchAi — Editor de escena</title>
+<style>
+  :root {
+    --bg:      oklch(99% 0.002 240);
+    --surface: oklch(100% 0 0);
+    --fg:      oklch(18% 0.012 250);
+    --muted:   oklch(54% 0.012 250);
+    --border:  oklch(92% 0.005 250);
+    --accent:  oklch(58% 0.18 255);
+
+    --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+    --font-body:    -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+
+    --topbar-h: 56px;
+    --sidebar-w: 200px;
+    --panel-w: 320px;
+    --timeline-h: 148px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: var(--font-body);
+    color: var(--fg);
+    background: var(--bg);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  button, input, textarea, select {
+    font-family: inherit;
+    color: inherit;
+    font-size: 13px;
+  }
+
+  .app {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* Top bar */
+  .topbar {
+    height: var(--topbar-h);
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    gap: 12px;
+  }
+  .topbar-left, .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .logo {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-right: 8px;
+  }
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted);
+  }
+  .breadcrumb select {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 8px;
+    background: var(--surface);
+    color: var(--fg);
+  }
+  .saved-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .topbar-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 6px;
+    padding: 6px 10px;
+    cursor: pointer;
+  }
+  .topbar-btn:hover { background: var(--bg); }
+  .topbar-btn.primary {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .topbar-btn.primary:hover { filter: brightness(0.95); }
+
+  /* Workspace */
+  .workspace {
+    display: grid;
+    grid-template-columns: var(--sidebar-w) 1fr var(--panel-w);
+    overflow: hidden;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    padding: 8px;
+    gap: 2px;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    width: 100%;
+    text-align: left;
+    color: var(--fg);
+  }
+  .nav-item:hover { background: var(--bg); }
+  .nav-item.active {
+    background: color-mix(in oklch, var(--accent) 12%, transparent);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .nav-icon { width: 20px; height: 20px; flex-shrink: 0; }
+  .sidebar-footer {
+    margin-top: auto;
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+  }
+  .user-pill {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .user-pill:hover { background: var(--bg); }
+  .avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    display: grid; place-items: center; font-weight: 700; font-size: 12px;
+  }
+  .user-name { font-weight: 600; }
+  .user-plan { font-size: 11px; color: var(--muted); }
+
+  /* Stage */
+  .stage {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg);
+  }
+
+  /* Canvas */
+  .canvas-area {
+    flex: 1;
+    position: relative;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .canvas-frame {
+    width: 100%; height: 100%;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+  }
+  .canvas-placeholder {
+    width: 100%; height: 100%;
+    background: repeating-linear-gradient(
+      45deg,
+      oklch(96% 0.005 240),
+      oklch(96% 0.005 240) 10px,
+      oklch(98% 0.005 240) 10px,
+      oklch(98% 0.005 240) 20px
+    );
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .canvas-toolbar {
+    position: absolute;
+    bottom: 20px; left: 20px;
+    display: flex;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  .canvas-toolbar button {
+    width: 32px; height: 32px;
+    display: grid; place-items: center;
+    border: none; background: transparent;
+    border-radius: 6px; cursor: pointer;
+  }
+  .canvas-toolbar button:hover { background: var(--bg); }
+
+  /* Timeline */
+  .timeline {
+    height: var(--timeline-h);
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .timeline-header {
+    display: flex; align-items: center; gap: 8px;
+    font-weight: 600; font-size: 12px;
+  }
+  .timeline-track {
+    display: flex; align-items: center;
+    gap: 12px;
+    overflow-x: auto;
+  }
+  .version-node {
+    display: flex; flex-direction: column; gap: 6px;
+    min-width: 120px;
+  }
+  .version-thumb {
+    width: 120px; height: 72px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted); font-size: 11px;
+  }
+  .version-meta { font-size: 11px; color: var(--muted); }
+  .version-title { font-weight: 600; font-size: 11px; }
+  .connector {
+    width: 16px; height: 2px; background: var(--border); flex-shrink: 0;
+  }
+
+  /* Right panel */
+  .panel {
+    border-left: 1px solid var(--border);
+    background: var(--surface);
+    overflow-y: auto;
+  }
+  .section-panel { display: none; padding: 16px; }
+  .section-panel.active { display: block; }
+
+  .panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .panel-title {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .field-group { margin-bottom: 16px; }
+  .field-label {
+    display: block;
+    font-weight: 600;
+    font-size: 12px;
+    margin-bottom: 6px;
+    color: var(--fg);
+  }
+  .hint { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  textarea, input[type="text"], input[type="number"] {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    background: var(--bg);
+    resize: vertical;
+  }
+  textarea { min-height: 72px; }
+
+  .slider-row {
+    display: flex; align-items: center; gap: 10px;
+  }
+  input[type="range"] { flex: 1; }
+  .slider-value {
+    min-width: 44px; text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-size: 12px; color: var(--muted);
+  }
+
+  .templates-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-top: 6px;
+  }
+  .template-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    background: var(--bg);
+  }
+  .template-card:hover { border-color: var(--accent); }
+  .template-thumb {
+    height: 72px;
+    background: repeating-linear-gradient(
+      45deg,
+      oklch(96% 0.005 240),
+      oklch(96% 0.005 240) 8px,
+      oklch(98% 0.005 240) 8px,
+      oklch(98% 0.005 240) 16px
+    );
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted); font-size: 11px;
+  }
+  .template-name {
+    padding: 8px; font-size: 11px; font-weight: 600;
+  }
+
+  .dropzone {
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    background: var(--bg);
+    cursor: pointer;
+  }
+  .dropzone:hover { border-color: var(--accent); color: var(--accent); }
+
+  .btn {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .btn:hover { background: var(--bg); }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .btn-primary:hover { filter: brightness(0.95); }
+
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 0;
+  }
+  .toggle {
+    width: 36px; height: 20px; border-radius: 999px;
+    background: var(--border); position: relative; cursor: pointer;
+    transition: background 0.2s ease;
+  }
+  .toggle.on { background: var(--accent); }
+  .toggle::after {
+    content: "";
+    position: absolute; top: 2px; left: 2px;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: #fff; transition: transform 0.2s ease;
+  }
+  .toggle.on::after { transform: translateX(16px); }
+
+  .btn-group {
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+  .btn-group .btn { width: auto; flex: 1; min-width: 0; font-weight: 500; }
+
+  .status-box {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    background: var(--bg);
+  }
+  .status-title { font-weight: 600; font-size: 12px; }
+  .status-desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* Scrollbars */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="logo">ArchAi</div>
+      <div class="breadcrumb">
+        <select aria-label="Proyecto">
+          <option>Casa del Bosque</option>
+        </select>
+        <span>/</span>
+        <select aria-label="Escena">
+          <option>Escena 03 — Fachada principal</option>
+        </select>
+      </div>
+      <div class="saved-status">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+        Guardado hace 2 min
+      </div>
+    </div>
+    <div class="topbar-right">
+      <button class="topbar-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+        Deshacer
+      </button>
+      <button class="topbar-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 11"/></svg>
+        Rehacer
+      </button>
+      <button class="topbar-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><path d="M3 9h18"/></svg>
+        Comparar
+      </button>
+      <button class="topbar-btn primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Exportar
+      </button>
+      <button class="topbar-btn" aria-label="Configuración">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H2a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V2a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <aside class="sidebar" role="tablist" aria-label="Herramientas">
+      <button class="nav-item active" role="tab" data-target="estilizar" aria-selected="true">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
+        Estilizar
+      </button>
+      <button class="nav-item" role="tab" data-target="editar-zona" aria-selected="false">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        Editar zona
+      </button>
+      <button class="nav-item" role="tab" data-target="objeto-2d" aria-selected="false">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
+        Objeto 2D
+      </button>
+      <button class="nav-item" role="tab" data-target="objeto-3d" aria-selected="false">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.12 6.4-6.05-4.06a2 2 0 0 0-2.17-.05L2.95 8.41a2 2 0 0 0-.95 1.7v5.82a2 2 0 0 0 .88 1.66l6.05 4.08a2 2 0 0 0 2.17.05l9.95-6.12a2 2 0 0 0 .95-1.7V8.06a2 2 0 0 0-.88-1.66Z"/><path d="M10 22v-8"/><path d="M10 12 2.5 8.5"/><path d="m10 12 9.5-5.5"/></svg>
+        Objeto 3D
+      </button>
+      <button class="nav-item" role="tab" data-target="biblioteca" aria-selected="false">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+        Biblioteca
+      </button>
+      <button class="nav-item" role="tab" data-target="versiones" aria-selected="false">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Versiones
+      </button>
+
+      <div class="sidebar-footer">
+        <div class="user-pill">
+          <div class="avatar">AV</div>
+          <div>
+            <div class="user-name">Arq. Valentina</div>
+            <div class="user-plan">Plan Profesional</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="stage">
+      <div class="canvas-area">
+        <div class="canvas-frame">
+          <div class="canvas-placeholder" id="canvasLabel">
+            Imagen de escena — fachada contemporánea
+          </div>
+        </div>
+        <div class="canvas-toolbar">
+          <button aria-label="Zoom out">−</button>
+          <span style="padding:0 6px; font-variant-numeric:tabular-nums;">41%</span>
+          <button aria-label="Zoom in">+</button>
+          <button aria-label="Ajustar a pantalla">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+          </button>
+          <button aria-label="Mover">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9l-3 3 3 3"/><path d="M9 5l3-3 3 3"/><path d="M19 9l3 3-3 3"/><path d="M9 19l3 3 3-3"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="timeline">
+        <div class="timeline-header">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4"/><path d="m16.2 7.8-2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m7.8 16.2-2.9 2.9"/><path d="M2 12h4"/><path d="m7.8 7.8-2.9-2.9"/></svg>
+          Versiones
+        </div>
+        <div class="timeline-track">
+          <div class="version-node">
+            <div class="version-thumb">Original</div>
+            <div class="version-title">Original</div>
+            <div class="version-meta">Hace 2 días</div>
+          </div>
+          <div class="connector"></div>
+          <div class="version-node">
+            <div class="version-thumb">V1</div>
+            <div class="version-title">V1 — Contemporáneo frío</div>
+            <div class="version-meta">Hace 1 día</div>
+          </div>
+          <div class="connector"></div>
+          <div class="version-node" style="border:1px solid var(--accent); border-radius:8px; padding:4px;">
+            <div class="version-thumb" style="border-color:var(--accent)">V2</div>
+            <div class="version-title">V2 — Contemporáneo cálido</div>
+            <div class="version-meta">Hace 45 min</div>
+          </div>
+          <div class="connector"></div>
+          <div class="version-node">
+            <div class="version-thumb">V3</div>
+            <div class="version-title">V3 — Atardecer</div>
+            <div class="version-meta">Hace 20 min</div>
+          </div>
+          <div class="connector"></div>
+          <div class="version-node">
+            <div class="version-thumb" style="border-style:dashed;">Nueva</div>
+            <div class="version-title" style="color:var(--muted)">Nueva versión</div>
+            <div class="version-meta">—</div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="panel">
+      <!-- Sección: Estilizar -->
+      <div class="section-panel active" id="estilizar">
+        <div class="panel-header">
+          <div class="panel-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
+            Estilizar
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="topbar-btn" style="padding:4px 8px;" aria-label="Ayuda">?</button>
+            <button class="topbar-btn" style="padding:4px 8px;" aria-label="Contraer panel">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field-label">Templates visuales</div>
+          <div class="templates-grid">
+            <div class="template-card">
+              <div class="template-thumb">Miniatura</div>
+              <div class="template-name">Contemporáneo cálido</div>
+            </div>
+            <div class="template-card">
+              <div class="template-thumb">Miniatura</div>
+              <div class="template-name">Minimalista</div>
+            </div>
+            <div class="template-card">
+              <div class="template-thumb">Miniatura</div>
+              <div class="template-name">Tropical</div>
+            </div>
+            <div class="template-card">
+              <div class="template-thumb">Miniatura</div>
+              <div class="template-name">Brutalista suave</div>
+            </div>
+          </div>
+          <div class="hint" style="text-align:right; margin-top:6px;">Ver todos</div>
+        </div>
+
+        <div class="field-group">
+          <div class="field-label">Prompt</div>
+          <textarea placeholder="Describe el estilo que deseas aplicar…">Fachada contemporánea cálida, materiales naturales como madera y piedra, iluminación cálida al atardecer, vegetación nativa, ambiente acogedor y elegante.</textarea>
+          <div class="hint" style="text-align:right;">144/1000</div>
+        </div>
+
+        <div class="field-group">
+          <div class="field-label">Intensidad</div>
+          <div class="slider-row">
+            <input type="range" min="0" max="100" value="75">
+            <div class="slider-value">75%</div>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field-label">Imagen de referencia (opcional)</div>
+          <div class="dropzone">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom:6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><br>
+            Arrastra una imagen o haz clic para seleccionar<br>
+            <span style="font-size:11px;">JPG, PNG hasta 10MB</span>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field-label" style="display:flex;align-items:center;gap:6px;">
+            Parámetros avanzados
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" style="margin-bottom:12px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:6px;"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+          Generar
+        </button>
+
+        <div class="status-box">
+          <div class="status-title">Listo para generar</div>
+          <div class="status-desc">Configura los parámetros y genera una nueva versión.</div>
+        </div>
+      </div>
+
+      <!-- Sección: Editar zona -->
+      <div class="section-panel" id="editar-zona">
+        <div class="panel-header">
+          <div class="panel-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            Editar zona
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="toggle-row">
+            <span>Mostrar segmentación</span>
+            <div class="toggle on" role="switch" aria-checked="true" onclick="this.classList.toggle('on');this.setAttribute('aria-checked',this.classList.contains('on'))"></div>
+          </div>
+          <button class="btn" style="margin-top:8px;">Detectar zonas</button>
+        </div>
+
+        <div class="field-group">
+          <div class="field-label">Configuración de máscara</div>
+          <div style="margin-bottom:10px;">
+            <div style="font-size:12px; margin-bottom:4px;">Expandir máscara</div>
+            <div class="slider-row">
+              <input type="range" min="0" max="50" value="8">
+              <div class="slider-value">8 px</div>
+            </div>
+          </div>
+          <div style="margin-bottom:10px;">
+            <div style="font-size:12px; margin-bottom:4px;">Suavizar borde (feather)</div>
+            <div class="slider-row">
+              <input type="range" min="0" max="50" value="24">
+              <div class="slider-value">24 px</div>
+            </div>
+          </div>
+          <div class="btn-group">
+            <button class="btn">Invertir</button>
+            <button class="btn">Limpiar máscara</button>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="toggle-row">
+            <div>
+              <div style="font-weight:600;">Preservar geometría</div>
+              <div class="hint">Mantiene la estructura y perspectiva de la zona.</div>
+            </div>
+            <div class="toggle on" role="switch" aria-checked="true" onclick="this.classList.toggle('on');this.setAttribute('aria-checked',this.classList.contains('on'))"></div>
+          </div>
+          <div class="toggle-row">
+            <div>
+              <div style="font-weight:600;">Preservar iluminación</div>
+              <div class="hint">Conserva luces, sombras y exposición.</div>
+            </div>
+            <div class="toggle on" role="switch" aria-checked="true" onclick="this.classList.toggle('on');this.setAttribute('aria-checked',this.classList.contains('on'))"></div>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field-label">Prompt de edición</div>
+          <textarea placeholder="Describe la edición de la zona seleccionada…">Sustituir el sofá por uno modular en tono gris claro con textura de lino, estilo contemporáneo.</textarea>
+          <div class="hint" style="text-align:right;">101/1000</div>
+        </div>
+
+        <div class="field-group">
+          <div class="field-label">Referencia opcional</div>
+          <div class="dropzone">
+            Arrastra o sube una imagen<br><span style="font-size:11px;">JPG, PNG hasta 10MB</span>
+          </div>
+        </div>
+
+        <button class="btn btn-primary">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:6px;"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+          Generar
+        </button>
+      </div>
+
+      <!-- Sección: Objeto 2D -->
+      <div class="section-panel" id="objeto-2d">
+        <div class="panel-header">
+          <div class="panel-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
+            Objeto 2D
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field-label">Prompt para generar objeto</div>
+          <textarea placeholder="Describe el objeto que deseas generar…">Sofá modular de 3 plazas, tela de lino gris claro, patas de roble.</textarea>
+        </div>
+
+        <div class="field-group">
+          <div class="field-label">Variantes generadas</div>
+          <div class="templates-grid">
+            <div class="template-card"><div class="template-thumb">Variante A</div><div class="template-name">Variante A</div></div>
+            <div class="template-card"><div class="template-thumb">Variante B</div><div class="template-name">Variante B</div></div>
+          </div>
+          <div class="hint" style="margin-top:6px;">Selecciona una variante para colocar en la escena.</div>
+        </div>
+
+        <div class="field-group">
+          <div class="field-label">Controles de objeto</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+            <div>
+              <div class="hint">Posición X</div>
+              <input type="number" value="120" style="margin-top:4px;">
+            </div>
+            <div>
+              <div class="hint">Posición Y</div>
+              <input type="number" value="340" style="margin-top:4px;">
+            </div>
+            <div>
+              <div class="hint">Escala</div>
+              <input type="number" value="1.0" step="0.1" style="margin-top:4px;">
+            </div>
+            <div>
+              <div class="hint">Rotación</div>
+              <input type="number" value="0" style="margin-top:4px;">
+            </div>
+          </div>
+          <div style="margin-bottom:8px;">
+            <div class="hint">Opacidad de preview</div>
+            <div class="slider-row" style="margin-top:4px;">
+              <input type="range" min="0" max="100" value="85">
+              <div class="slider-value">85%</div>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary">Integrar en escena</button>
+      </div>
+
+      <!-- Sección: Objeto 3D -->
+      <div class="section-panel" id="objeto-3d">
+        <div class="panel-header">
+          <div class="panel-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.12 6.4-6.05-4.06a2 2 0 0 0-2.17-.05L2.95 8.41a2 2 0 0 0-.95 1.7v5.82a2 2 0 0 0 .88 1.66l6.05 4.08a2 2 0 0 0 2.17.05l9.95-6.12a2 2 0 0 0 .95-1.7V8.06a2 2 0 0 0-.88-1.66Z"/><path d="M10 22v-8"/><path d="M10 12 2.5 8.5"/><path d="m10 12 9.5-5.5"/></svg>
+            Objeto 3D / 2.5D
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field-label">Selección de objeto</div>
+          <select style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:var(--bg);">
+            <option>Sofá modular — biblioteca</option>
+            <option>Mesa de centro — biblioteca</option>
+            <option>Subir nuevo objeto…</option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <div class="field-label">Estado de conversión</div>
+          <div class="status-box">
+            <div class="status-title">Depth map listo</div>
+            <div class="status-desc">El objeto está posicionable en la escena.</div>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field-label">Controles de integración</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+            <div><div class="hint">Posición X</div><input type="number" value="120" style="margin-top:4px;"></div>
+            <div><div class="hint">Posición Y</div><input type="number" value="340" style="margin-top:4px;"></div>
+            <div><div class="hint">Profundidad</div><input type="number" value="0.6" step="0.1" style="margin-top:4px;"></div>
+            <div><div class="hint">Escala</div><input type="number" value="1.0" step="0.1" style="margin-top:4px;"></div>
+            <div><div class="hint">Rotación</div><input type="number" value="12" style="margin-top:4px;"></div>
+            <div><div class="hint">Oclusión</div><input type="number" value="0.8" step="0.1" style="margin-top:4px;"></div>
+          </div>
+          <div class="toggle-row">
+            <span>Contacto / sombra</span>
+            <div class="toggle on" role="switch" aria-checked="true" onclick="this.classList.toggle('on');this.setAttribute('aria-checked',this.classList.contains('on'))"></div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary">Generar integración</button>
+      </div>
+
+      <!-- Placeholder para Biblioteca / Versiones -->
+      <div class="section-panel" id="biblioteca">
+        <div class="panel-header">
+          <div class="panel-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+            Biblioteca
+          </div>
+        </div>
+        <div class="field-group">
+          <div class="field-label">Filtros</div>
+          <div class="btn-group">
+            <button class="btn">Imágenes</button>
+            <button class="btn">Referencias</button>
+            <button class="btn">Materiales</button>
+          </div>
+        </div>
+        <div class="templates-grid" style="margin-top:10px;">
+          <div class="template-card"><div class="template-thumb">Asset 1</div><div class="template-name">Madera roble</div></div>
+          <div class="template-card"><div class="template-thumb">Asset 2</div><div class="template-name">Piedra caliza</div></div>
+          <div class="template-card"><div class="template-thumb">Asset 3</div><div class="template-name">Sofá modular</div></div>
+          <div class="template-card"><div class="template-thumb">Asset 4</div><div class="template-name">Lámpara arco</div></div>
+        </div>
+      </div>
+
+      <div class="section-panel" id="versiones">
+        <div class="panel-header">
+          <div class="panel-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Versiones
+          </div>
+        </div>
+        <div class="field-group">
+          <div class="field-label">Historial de la escena</div>
+          <div class="status-box" style="margin-bottom:8px;">
+            <div class="status-title">V2 — Contemporáneo cálido</div>
+            <div class="status-desc">Generado hace 45 min • style_transfer</div>
+          </div>
+          <div class="status-box" style="margin-bottom:8px;">
+            <div class="status-title">V1 — Contemporáneo frío</div>
+            <div class="status-desc">Generado hace 1 día • style_transfer</div>
+          </div>
+          <div class="status-box">
+            <div class="status-title">Original</div>
+            <div class="status-desc">Subido hace 2 días</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+  const navItems = document.querySelectorAll('.nav-item');
+  const panels = document.querySelectorAll('.section-panel');
+  const canvasLabel = document.getElementById('canvasLabel');
+
+  const sceneLabels = {
+    'estilizar': 'Imagen de escena — fachada contemporánea',
+    'editar-zona': 'Imagen de escena — sala principal con máscara activa',
+    'objeto-2d': 'Imagen de escena — vista previa de objeto 2D',
+    'objeto-3d': 'Imagen de escena — preview 2.5D con depth map',
+    'biblioteca': 'Imagen de escena — vista general',
+    'versiones': 'Imagen de escena — vista general'
+  };
+
+  navItems.forEach(item => {
+    item.addEventListener('click', () => {
+      const target = item.dataset.target;
+      if (!target) return;
+
+      navItems.forEach(n => { n.classList.remove('active'); n.setAttribute('aria-selected', 'false'); });
+      item.classList.add('active');
+      item.setAttribute('aria-selected', 'true');
+
+      panels.forEach(p => p.classList.remove('active'));
+      const panel = document.getElementById(target);
+      if (panel) panel.classList.add('active');
+
+      if (sceneLabels[target]) canvasLabel.textContent = sceneLabels[target];
+    });
+  });
+</script>
+</body>
+</html>

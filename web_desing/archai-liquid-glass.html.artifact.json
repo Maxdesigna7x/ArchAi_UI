@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "kind": "html",
+  "title": "ArchAi — Liquid Glass + Dark Mode",
+  "entry": "archai-liquid-glass.html",
+  "renderer": "html",
+  "status": "complete",
+  "exports": [
+    "html",
+    "pdf",
+    "zip"
+  ],
+  "createdAt": "2026-05-22T15:52:45.597Z",
+  "updatedAt": "2026-05-22T15:52:45.608Z",
+  "metadata": {
+    "identifier": "archai-liquid-glass",
+    "artifactType": "text/html",
+    "inferred": false
+  }
+}
