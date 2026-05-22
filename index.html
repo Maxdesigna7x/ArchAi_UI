@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="refresh" content="0; url=web_desing/archai-liquid-glass.html">
+<title>ArchAi UI</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #0f172a;
+    --fg: #e2e8f0;
+    --muted: #94a3b8;
+    --card: rgba(15, 23, 42, 0.72);
+    --border: rgba(148, 163, 184, 0.22);
+    --accent: #60a5fa;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    background:
+      radial-gradient(circle at top, rgba(96, 165, 250, 0.22), transparent 42%),
+      radial-gradient(circle at bottom right, rgba(34, 197, 94, 0.16), transparent 28%),
+      var(--bg);
+    color: var(--fg);
+    display: grid;
+    place-items: center;
+    padding: 24px;
+  }
+
+  .card {
+    width: min(720px, 100%);
+    border: 1px solid var(--border);
+    border-radius: 28px;
+    background: var(--card);
+    backdrop-filter: blur(24px) saturate(150%);
+    -webkit-backdrop-filter: blur(24px) saturate(150%);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+    padding: 32px;
+  }
+
+  .eyebrow {
+    margin: 0 0 12px;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(34px, 7vw, 62px);
+    line-height: 0.95;
+    letter-spacing: -0.05em;
+  }
+
+  p {
+    margin: 16px 0 0;
+    max-width: 58ch;
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--muted);
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 28px;
+  }
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+    padding: 0 18px;
+    border-radius: 14px;
+    text-decoration: none;
+    font-weight: 700;
+    transition: transform 0.16s ease, background 0.16s ease, border-color 0.16s ease;
+  }
+
+  .primary {
+    background: var(--accent);
+    color: #0f172a;
+  }
+
+  .secondary {
+    border: 1px solid var(--border);
+    color: var(--fg);
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  a:hover { transform: translateY(-1px); }
+
+  .hint {
+    margin-top: 18px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+</style>
+<script>
+  window.location.replace('web_desing/archai-liquid-glass.html');
+</script>
+</head>
+<body>
+  <main class="card">
+    <p class="eyebrow">ArchAi UI</p>
+    <h1>Entrando a la experiencia principal.</h1>
+    <p>
+      Si la redirección automática no se ejecuta, abre la interfaz desde el enlace directo.
+    </p>
+    <div class="actions">
+      <a class="primary" href="web_desing/archai-liquid-glass.html">Abrir ArchAi</a>
+      <a class="secondary" href="web_desing/index.html">Abrir índice alterno</a>
+    </div>
+    <div class="hint">Listo para publicarse como GitHub Pages desde la rama <code>main</code>.</div>
+  </main>
+</body>
+</html>
